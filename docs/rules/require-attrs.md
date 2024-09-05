@@ -34,6 +34,12 @@ module.exports = {
         attr: "alt", // Enforce to use img with alt attribute.
       },
       {
+        tag: "span",
+        attr: "targetX",
+        exceptions: ["targetY"], // not validate if this attr are already present on tag
+        excludeHasDynamicContent: true // if content inside {{}} not included in validation
+      },
+      {
         tag: "svg",
         attr: "viewBox" // Enforce to use svg and viewBox attributes with "0 0 100 100" value.
         value: "0 0 100 100"
@@ -51,6 +57,12 @@ Examples of **incorrect** code for this rule with the option below:
   "attr": "alt"
 },
 {
+  "tag": "span",
+  "attr": "targetX",
+  "exceptions": ["targetY"],
+  "excludeHasDynamicContent": true
+}
+{
   "tag": "svg",
   "attr": "viewBox",
   "value": "0 0 100 100"
@@ -58,11 +70,11 @@ Examples of **incorrect** code for this rule with the option below:
 ```
 
 ```html,incorrect
-<img /> <svg></svg>
+<img /><span></span><svg></svg>
 ```
 
 Examples of **correct** code for this rule with the option above:
 
 ```html,correct
-<img alt="" /><svg viewBox="0 0 100 100"></svg>
+<img alt="" /><span targetX></span><span targetY></span><span>{{value}}</span><svg viewBox="0 0 100 100"></svg>
 ```
