@@ -34,6 +34,11 @@ module.exports = {
           tag: { type: "string" },
           attr: { type: "string" },
           value: { type: "string" },
+          exceptions: {
+            type: "array",
+            items: { type: "string" },
+            default: [],
+          },
         },
         required: ["tag", "attr"],
         additionalProperties: false,
@@ -49,7 +54,7 @@ module.exports = {
   create(context) {
     const options = context.options || [];
     /**
-     * @type {Map<string, { tag: string, attr: string, value?: string}[]>}
+     * @type {Map<string, { tag: string, attr: string, value?: string, exceptions?: string[]}[]>}
      */
     const tagOptionsMap = new Map();
 
@@ -76,7 +81,7 @@ module.exports = {
       tagOptions.forEach((option) => {
         const attrName = option.attr;
         const attr = attributes.find(
-          (attr) => attr.key && attr.key.value === attrName
+          (attr) => attr.key && attr.key.value === attrName || option.exceptions?.includes(attr.key.value)
         );
         if (!attr) {
           context.report({
