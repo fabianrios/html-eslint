@@ -34,6 +34,12 @@ module.exports = {
           tag: { type: "string" },
           attr: { type: "string" },
           value: { type: "string" },
+          exceptions: {
+            type: "array",
+            items: { type: "string" },
+            default: [],
+          },
+          excludeHasDynamicContent: { type: "boolean", default: false },
         },
         required: ["tag", "attr"],
         additionalProperties: false,
@@ -49,7 +55,7 @@ module.exports = {
   create(context) {
     const options = context.options || [];
     /**
-     * @type {Map<string, { tag: string, attr: string, value?: string}[]>}
+     * @type {Map<string, { tag: string, attr: string, value?: string, exceptions?: string[], excludeHasDynamicContent?: boolean }[]>}
      */
     const tagOptionsMap = new Map();
 
@@ -72,40 +78,57 @@ module.exports = {
     function check(node, tagName) {
       const tagOptions = tagOptionsMap.get(tagName) || [];
       const attributes = node.attributes || [];
+      // @ts-ignore
+      const content = node.children
+        ? // @ts-ignore
+          node.children.map((child) => child.value).join("")
+        : "";
 
       tagOptions.forEach((option) => {
         const attrName = option.attr;
-        const attr = attributes.find(
-          (attr) => attr.key && attr.key.value === attrName
-        );
-        if (!attr) {
-          context.report({
-            messageId: MESSAGE_IDS.MISSING,
-            node,
-            data: {
-              attr: attrName,
-              tag: tagName,
-            },
-          });
-        } else if (
-          typeof option.value === "string" &&
-          (!attr.value || attr.value.value !== option.value)
-        ) {
-          context.report({
-            messageId: MESSAGE_IDS.UNEXPECTED,
-            node: attr,
-            data: {
-              attr: attrName,
-              expected: option.value,
-            },
-          });
+        const hasException =
+          option.exceptions &&
+          option.exceptions.some((exception) =>
+            attributes.some((attr) => attr.key && attr.key.value === exception)
+          );
+        const hasTemplateExpression =
+          option.excludeHasDynamicContent && /\{\{.*?\}\}/.test(content);
+
+        if (!hasException && !hasTemplateExpression) {
+          const attr = attributes.find(
+            (attr) => attr.key && attr.key.value === attrName
+          );
+
+          if (!attr) {
+            context.report({
+              messageId: MESSAGE_IDS.MISSING,
+              node,
+              data: {
+                attr: attrName,
+                tag: tagName,
+              },
+            });
+          } else if (
+            attr &&
+            typeof option.value === "string" &&
+            (!attr.value || attr.value.value !== option.value)
+          ) {
+            context.report({
+              messageId: MESSAGE_IDS.UNEXPECTED,
+              node: attr,
+              data: {
+                attr: attrName,
+                expected: option.value,
+              },
+            });
+          }
         }
       });
     }
 
     return {
       /**
-       * @param {StyleTagNode | ScriptTagNode} node
+       * @param {StyleTagNode | ScriptTagNode } node
        * @returns
        */
       [["StyleTag", "ScriptTag"].join(",")](node) {
